@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ASTRAL — Modelo do app de controle de obras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFF8E6; --panel:#FFFFFF; --ink:#141414; --muted:#574F3F; --line:#E8DDB8;
+  --yellow:#FFC72C; --orange:#FF7F11; --cream:#FFF3CF; --black:#141414; --white:#FFFFFF;
+  --display:"Fredoka","Trebuchet MS","Arial Rounded MT Bold",system-ui,sans-serif;
+  --text:"Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#17150F;--panel:#252116;--ink:#FFF8E6;--muted:#D3CAAE;--line:#3B3625}
+}
+:root[data-theme="dark"]{--bg:#17150F;--panel:#252116;--ink:#FFF8E6;--muted:#D3CAAE;--line:#3B3625}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;position:relative;overflow:hidden}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0}
+p{margin:0}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+
+/* ---------- deck ---------- */
+.deck{position:absolute;inset:0}
+.slide{position:absolute;inset:0;display:none;overflow:auto;padding:clamp(28px,4vw,56px) clamp(20px,5vw,72px) 104px;background:var(--bg)}
+.slide.active{display:block}
+.slide::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:repeating-linear-gradient(-45deg,var(--black) 0 12px,var(--yellow) 12px 24px)}
+.wrap{max-width:1120px;margin:0 auto;min-height:100%;display:grid;align-content:center;gap:32px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(28px,6vw,80px);align-items:center}
+.split.flip{grid-template-columns:auto minmax(0,1fr)}
+.split.flip .phone-col{order:-1}
+.kicker{display:inline-block;font-weight:800;font-size:15px;background:var(--yellow);color:var(--black);padding:4px 14px;border-radius:999px;border:2px solid var(--black);margin-bottom:14px}
+h2{font-size:clamp(32px,4.6vw,52px);margin-bottom:16px}
+.lead{font-size:clamp(18px,2vw,21px);color:var(--muted);max-width:52ch}
+.notes{list-style:none;margin:28px 0 0;padding:0;max-width:56ch}
+.notes li{padding:14px 0;border-top:2px solid var(--line)}
+.notes li:last-child{border-bottom:2px solid var(--line)}
+.notes b{font-family:var(--display);font-weight:600;font-size:20px;display:block;margin-bottom:2px}
+.notes span{color:var(--muted);font-size:17px}
+.tag{font-weight:800;font-size:14px;color:var(--ink);background:var(--cream);border:1.5px solid var(--line);border-radius:8px;padding:1px 8px;white-space:nowrap}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag{background:#3B3120}}
+:root[data-theme="dark"] .tag{background:#3B3120}
+
+/* capa */
+.cover{background:var(--yellow);color:var(--black)}
+.cover::before{height:20px;background:repeating-linear-gradient(-45deg,var(--black) 0 14px,var(--yellow) 14px 28px)}
+.cover .lead{color:#2B2514}
+.cover h1{font-size:clamp(64px,11vw,136px);letter-spacing:.01em;margin:10px 0 6px}
+.cover .tagline{font-family:var(--display);font-weight:600;font-size:clamp(24px,3.2vw,38px);line-height:1.15;max-width:18ch;margin-bottom:18px}
+.cover .logo-row{display:flex;align-items:center;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.chips span{background:var(--white);border:2.5px solid var(--black);border-radius:999px;padding:4px 16px;font-weight:800;font-size:16px;box-shadow:0 3px 0 var(--black)}
+
+/* ---------- phone ---------- */
+.phone-col{display:grid;justify-items:center;gap:14px}
+.phone{width:324px;height:660px;background:var(--black);border-radius:48px;padding:12px;box-shadow:0 26px 40px -18px rgba(0,0,0,.45);flex:none}
+.screen{width:100%;height:100%;background:#fff;border-radius:38px;overflow:hidden;position:relative;color:var(--black)}
+@media (max-height:820px){.phone{zoom:.86}}
+.app{height:100%;overflow-y:auto;display:flex;flex-direction:column;background:#fff;color:var(--black);font-family:var(--text);font-size:16px;scrollbar-width:none}
+.app::-webkit-scrollbar{display:none}
+.status{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14px;padding:12px 26px 0}
+.status i{display:inline-block;width:24px;height:12px;border:2px solid var(--black);border-radius:4px;position:relative}
+.status i::after{content:"";position:absolute;inset:1px;right:6px;background:var(--black);border-radius:1px}
+.hero{background:var(--yellow);border-radius:0 0 30px 30px;padding:0 22px 22px;border-bottom:3px solid var(--black)}
+.hero .brand{display:flex;align-items:center;gap:10px;margin:14px 0 14px}
+.hero .brand b{font-family:var(--display);font-size:24px;letter-spacing:.04em}
+.hero h3{font-size:28px;margin-bottom:4px}
+.hero p{font-size:15px;line-height:1.35;font-weight:700}
+.form{padding:18px 20px 22px;display:grid;gap:12px}
+.field{display:grid;gap:5px}
+.lbl{font-weight:800;font-size:14px}
+.inp{display:flex;align-items:center;gap:10px;min-height:50px;padding:0 14px;border:2.5px solid var(--black);border-radius:14px;background:#fff}
+.inp:focus-within{box-shadow:0 0 0 3px var(--orange)}
+.inp svg{flex:none}
+.inp input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:17px;font-weight:700;color:var(--black);height:46px}
+.inp input::placeholder{color:#7A725E;font-weight:600}
+.field.bad .inp{border-color:#B3261E;background:#FFF1EF}
+.help,.err{font-size:13px;line-height:1.3;font-weight:700;color:#5B5442}
+.err{color:#B3261E;display:none}
+.field.bad .err{display:block}
+.field.bad .help{display:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;border:3px solid var(--black);border-radius:16px;background:var(--orange);color:var(--black);font-family:var(--display);font-weight:600;font-size:21px;cursor:pointer;box-shadow:0 5px 0 var(--black);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--black)}
+.btn.alt{background:#fff}
+.btn[disabled]{background:#E9E4D3;color:#5E5848;border-color:#8A8370;box-shadow:0 5px 0 #8A8370;cursor:not-allowed}
+.btn[disabled]:active{transform:none;box-shadow:0 5px 0 #8A8370}
+.linkbtn{background:none;border:0;min-height:48px;font-weight:800;font-size:16px;color:var(--black);text-decoration:underline;text-underline-offset:4px;cursor:pointer;width:100%}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 20px 0}
+.back{width:48px;height:48px;border-radius:14px;border:2.5px solid var(--black);background:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.steps{flex:1;display:grid;gap:4px}
+.steps small{font-weight:800;font-size:13px}
+.bar{height:10px;background:#EFE8D0;border:2px solid var(--black);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--orange)}
+.bar.half i{width:50%}
+.ask{padding:14px 20px 4px}
+.ask h3{font-size:27px;margin-bottom:4px}
+.ask p{font-size:15px;line-height:1.35;font-weight:700;color:#4A4434}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 20px 10px}
+.pcard{position:relative;display:grid;justify-items:center;align-content:center;gap:6px;min-height:104px;padding:10px 6px;border:2.5px solid var(--black);border-radius:18px;background:#fff;cursor:pointer;font-family:var(--display);font-weight:600;font-size:17px;line-height:1.1;color:var(--black);text-align:center;box-shadow:0 4px 0 var(--black);transition:transform .08s,box-shadow .08s,background .12s}
+.pcard:active{transform:translateY(3px);box-shadow:0 1px 0 var(--black)}
+.pcard .ico{width:48px;height:48px}
+.pcard .tick{position:absolute;top:-10px;right:-8px;width:28px;height:28px;border-radius:50%;background:var(--orange);border:2.5px solid var(--black);display:none;place-items:center}
+.pcard[aria-pressed="true"]{background:var(--cream);border-width:3.5px;box-shadow:0 4px 0 var(--orange),0 0 0 3px var(--orange)}
+.pcard[aria-pressed="true"] .tick{display:grid}
+.pad{padding:6px 20px 22px}
+.pad .btn{margin-top:4px}
+
+.done{flex:1;display:grid;align-content:center;justify-items:center;text-align:center;gap:12px;padding:20px 24px 28px}
+.done .big{width:96px;height:96px;border-radius:50%;background:var(--yellow);border:3px solid var(--black);display:grid;place-items:center;box-shadow:0 5px 0 var(--black)}
+.done h3{font-size:28px}
+.done p{font-size:16px;font-weight:700;line-height:1.4}
+.done .note{background:var(--cream);border:2px dashed var(--black);border-radius:14px;padding:10px 12px;font-size:14px;min-height:0}
+.done .note:empty{display:none}
+.done .btn{margin-top:8px}
+
+.cap{font-size:15px;font-weight:700;color:var(--muted);text-align:center;max-width:320px}
+.reset{background:none;border:2px solid var(--ink);color:var(--ink);border-radius:999px;padding:6px 18px;font-weight:800;font-size:15px;cursor:pointer;min-height:44px}
+
+/* perfis depois */
+.grid6{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:8px}
+.role-card{background:var(--panel);border:2.5px solid var(--ink);border-radius:20px;padding:18px 18px 20px;box-shadow:0 5px 0 var(--ink)}
+.role-card:nth-child(2n){border-radius:20px 28px 20px 28px}
+.role-card .ico{width:52px;height:52px;margin-bottom:8px}
+.role-card h3{font-size:24px;margin-bottom:4px}
+.role-card p{font-size:16px;color:var(--muted);line-height:1.4}
+
+/* paleta */
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);border:3px solid var(--ink);border-radius:22px;overflow:hidden;min-height:190px}
+.sw{padding:16px 14px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
+.sw b{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.1}
+.sw span{font-size:15px;font-weight:800}
+.sw small{font-size:14px;font-weight:700;opacity:.9;line-height:1.25}
+.specs{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:start}
+.type-demo .d{font-family:var(--display);font-weight:700;font-size:44px;line-height:1.05}
+.type-demo .n{font-size:18px;color:var(--muted);margin-top:8px;max-width:40ch}
+.type-demo small{display:block;margin-top:10px;font-size:15px;color:var(--muted)}
+.btn-demo{display:grid;gap:14px;max-width:340px}
+.btn-demo .btn{font-size:20px}
+.btn-demo .btn.alt{background:#fff}
+
+/* ux */
+.laws{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}
+.law{padding:16px 0 16px 18px;border-left:6px solid var(--orange);margin:10px 0}
+.law:nth-child(3n+1){border-left-color:var(--yellow)}
+.law h3{font-size:22px;margin-bottom:2px;font-weight:600}
+.law p{font-size:17px;color:var(--muted);line-height:1.45}
+
+/* ---------- app (abas) ---------- */
+.shell{position:relative;overflow:hidden}
+.ahead{background:var(--yellow);border-bottom:3px solid var(--black);border-radius:0 0 22px 22px;padding-bottom:10px;flex:none}
+.arow{display:flex;align-items:center;gap:10px;padding:8px 16px 0}
+.arow>div{flex:1;min-width:0}
+.arow b{font-family:var(--display);font-size:19px;display:block;line-height:1.15}
+.arow small{font-size:13px;font-weight:800;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xbtn{min-width:48px;min-height:44px;border:2.5px solid var(--black);border-radius:12px;background:#fff;color:var(--black);font-weight:800;font-size:13px;cursor:pointer;padding:0 8px;display:grid;place-items:center}
+.pane{flex:1;overflow-y:auto;padding:14px 16px 16px;scrollbar-width:none}
+.pane::-webkit-scrollbar{display:none}
+.pane h3{font-size:25px;margin-bottom:2px}
+.sub{font-size:14px;line-height:1.35;font-weight:700;color:#4A4434;margin-bottom:12px}
+.quick{display:flex;gap:8px;align-items:stretch}
+.quick .inp{flex:1;min-width:0}
+.addbtn{width:56px;flex:none;border:3px solid var(--black);border-radius:14px;background:var(--orange);color:var(--black);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 0 var(--black);transition:transform .08s,box-shadow .08s}
+.addbtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--black)}
+.qchips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.qc{min-height:40px;padding:0 12px;border:2.5px solid var(--black);border-radius:999px;background:var(--cream);color:var(--black);font-family:var(--text);font-weight:800;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.qc:active{background:var(--yellow)}
+.mcount{font-family:var(--display);font-weight:600;font-size:17px;margin:14px 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+.mcount small{font-family:var(--text);font-weight:800;font-size:13px;color:#4A4434}
+.mlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.mi{display:flex;align-items:center;gap:8px;padding:8px;border:2.5px solid var(--black);border-radius:16px;background:#fff}
+.mi.urgent{background:#FFF1DD;box-shadow:inset 6px 0 0 var(--orange);padding-left:12px}
+.mi.done{background:#F3F0E4;border-style:dashed}
+.mi.done .mt b{text-decoration:line-through;color:#5E5848}
+.chk,.ib{flex:none;border:2.5px solid var(--black);border-radius:12px;background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--black)}
+.chk{width:44px;height:44px}
+.chk svg{opacity:0}
+.chk[aria-pressed="true"]{background:var(--yellow)}
+.chk[aria-pressed="true"] svg{opacity:1}
+.ib{width:42px;height:44px;border-color:#8A8370}
+.ib[aria-pressed="true"]{background:var(--orange);border-color:var(--black)}
+.mt{flex:1;min-width:0}
+.mt b{font-weight:800;font-size:16px;line-height:1.2;display:block}
+.mt small{font-size:13px;font-weight:700;color:#5B5442;display:block}
+.badge{display:inline-block;font-size:12px;font-weight:800;background:var(--orange);border:2px solid var(--black);border-radius:99px;padding:0 8px;margin-top:3px;color:var(--black)}
+.empty{text-align:center;padding:18px 12px;border:2.5px dashed #8A8370;border-radius:16px;font-weight:700;font-size:15px;line-height:1.35;color:#4A4434}
+.tabbar{flex:none;display:grid;grid-template-columns:repeat(3,1fr);border-top:3px solid var(--black);background:#fff}
+.tab{min-height:64px;display:grid;justify-items:center;align-content:center;gap:2px;border:0;background:#fff;font-family:var(--display);font-weight:600;font-size:14px;cursor:pointer;color:var(--black)}
+.tab+.tab{border-left:3px solid var(--black)}
+.tab[aria-selected="true"]{background:var(--orange)}
+.toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--black);color:#fff;border-radius:14px;padding:10px 14px;font-weight:800;font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:4}
+.toast.on{opacity:1}
+.mh{margin-bottom:8px}
+.mh h3{font-size:22px}
+.wk,.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.wk span{text-align:center;font-weight:800;font-size:13px;color:#4A4434;padding-bottom:4px}
+.day{min-height:46px;border:2.5px solid var(--black);border-radius:10px;background:#fff;display:grid;grid-template-rows:auto 1fr;justify-items:center;align-items:center;padding:2px 0;cursor:pointer;color:var(--black);font-family:var(--text);font-weight:800;font-size:13px}
+.day svg{width:16px;height:16px}
+.day.e{border-color:#8A8370;border-style:dashed}
+.day.w{background:var(--yellow)}
+.day.r{background:var(--black);color:#fff}
+.day.p{background:var(--orange)}
+.day.today{box-shadow:0 0 0 2px #fff,0 0 0 4.5px var(--black)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin:16px 0 8px}
+.lg{display:flex;align-items:center;gap:6px;font-weight:800;font-size:14px}
+.lg i{width:26px;height:26px;border:2.5px solid var(--black);border-radius:8px;display:grid;place-items:center;font-style:normal}
+.lg i svg{width:14px;height:14px}
+.lg i.w{background:var(--yellow)}
+.lg i.r{background:var(--black);color:#fff}
+.lg i.p{background:var(--orange)}
+.whyh{font-family:var(--display);font-weight:600;font-size:17px;margin:12px 0 6px}
+.why{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.why li{font-size:14px;font-weight:700;line-height:1.3;padding:8px 10px;border:2px solid var(--black);border-radius:12px;display:flex;gap:8px}
+.why li b{flex:none}
+.nudge{width:100%;min-height:48px;border:2.5px dashed var(--black);border-radius:14px;background:var(--cream);font-family:var(--text);font-weight:800;font-size:14px;cursor:pointer;margin-bottom:12px;text-align:left;padding:8px 12px;color:var(--black)}
+.scrim{position:absolute;inset:0;background:rgba(20,20,20,.55);z-index:5}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:3px solid var(--black);border-radius:24px 24px 0 0;padding:14px 16px 18px;max-height:94%;overflow-y:auto}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.sheet-h h4{font-family:var(--display);font-size:19px;margin:0;line-height:1.15}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.opt{min-height:84px;border:2.5px solid var(--black);border-radius:16px;background:#fff;display:grid;justify-items:center;align-content:center;gap:4px;font-family:var(--display);font-weight:600;font-size:15px;line-height:1.1;cursor:pointer;color:var(--black);box-shadow:0 3px 0 var(--black);padding:4px}
+.opt svg{width:28px;height:28px}
+.opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--orange),0 3px 0 var(--black)}
+.opt.w[aria-pressed="true"]{background:var(--yellow)}
+.opt.r[aria-pressed="true"]{background:var(--black);color:#fff}
+.opt.p[aria-pressed="true"]{background:var(--orange)}
+.rs{margin-top:12px}
+.rs .lbl{display:block;margin-bottom:6px}
+.rchips{display:flex;flex-wrap:wrap;gap:8px}
+.rc{min-height:44px;padding:0 12px;border:2.5px solid var(--black);border-radius:999px;background:#fff;font-family:var(--text);font-weight:800;font-size:14px;cursor:pointer;color:var(--black)}
+.rc[aria-pressed="true"]{background:var(--cream);box-shadow:0 0 0 3px var(--orange)}
+
+/* construcoes e somente leitura */
+.ocard{width:100%;display:flex;align-items:center;gap:10px;padding:10px;min-height:68px;border:2.5px solid var(--black);border-radius:16px;background:#fff;color:var(--black);text-align:left;cursor:pointer;font-family:var(--text);box-shadow:0 4px 0 var(--black);transition:transform .08s,box-shadow .08s}
+.ocard:active{transform:translateY(3px);box-shadow:0 1px 0 var(--black)}
+.ocard[aria-pressed="true"]{background:var(--cream);box-shadow:0 0 0 3px var(--orange),0 4px 0 var(--black)}
+.oic{width:44px;height:44px;flex:none;border:2.5px solid var(--black);border-radius:12px;background:var(--yellow);display:grid;place-items:center}
+.robox{margin:0 0 12px;padding:8px 12px;border:2.5px dashed var(--black);border-radius:14px;background:var(--cream);font-size:14px;font-weight:700;line-height:1.3}
+.robox b{font-weight:800}
+.day.ro{cursor:default}
+.tabbar.g4 .tab{font-size:12.5px}
+.tabbar.g4{grid-template-columns:repeat(4,1fr)}
+.mecard{display:flex;gap:12px;align-items:center;padding:12px;border:2.5px solid var(--black);border-radius:16px;background:var(--yellow);box-shadow:0 4px 0 var(--black)}
+.av{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--black);background:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:22px;flex:none}
+.mecard b{font-family:var(--display);font-size:20px;display:block;line-height:1.15}
+.mecard small{display:block;font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+.perm{display:flex;flex-wrap:wrap;gap:6px}
+.pm{font-size:13px;font-weight:800;background:var(--cream);border:2px solid var(--black);border-radius:99px;padding:1px 10px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 12px}
+.kpi{border:2.5px solid var(--black);border-radius:14px;padding:8px 4px;text-align:center;background:#fff}
+.kpi small{display:block;font-size:11px;font-weight:800;line-height:1.2}
+.kpi b{font-family:var(--display);font-size:16px;line-height:1.2}
+.kpi.hot{background:var(--yellow)}
+.bars{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+.bars li{position:relative;border:2px solid var(--black);border-radius:10px;overflow:hidden;padding:5px 10px;font-weight:800;font-size:13px;display:flex;justify-content:space-between}
+.bars li i{position:absolute;left:0;top:0;bottom:0;background:var(--yellow)}
+.bars li span,.bars li b{position:relative}
+.aih{display:flex;align-items:center;gap:8px}
+.aih b{font-family:var(--display);font-size:18px}
+.chat{display:grid;gap:8px;margin:10px 0}
+.msg{padding:8px 10px;border:2px solid var(--black);border-radius:14px;font-size:14px;font-weight:700;line-height:1.35;max-width:92%}
+.msg.me{justify-self:end;background:var(--cream)}
+.msg.ia{background:#fff}
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.nav .step{width:52px;height:52px;border-radius:50%;border:3px solid var(--black);background:var(--yellow);color:var(--black);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 0 var(--black)}
+.nav .step:active{transform:translateY(3px);box-shadow:0 1px 0 var(--black)}
+.nav .step[disabled]{opacity:.45;cursor:not-allowed}
+.dots{display:flex;gap:2px;align-items:center}
+.dots button{width:28px;height:44px;background:none;border:0;padding:0;cursor:pointer;display:grid;place-items:center}
+.dots button i{display:block;width:12px;height:12px;border-radius:50%;background:transparent;border:2.5px solid var(--ink)}
+.dots button[aria-current="true"] i{background:var(--orange);width:26px;border-radius:99px}
+.count{font-weight:800;font-size:15px;min-width:48px;text-align:center}
+
+@media (max-width:900px){
+  .split,.split.flip{grid-template-columns:1fr;justify-items:center}
+  .split.flip .phone-col{order:0}
+  .split>div:not(.phone-col){justify-self:stretch}
+  .grid6{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .swatches{grid-template-columns:1fr 1fr}
+  .sw{min-height:120px}
+  .specs,.laws{grid-template-columns:1fr}
+  .count{display:none}
+}
+@media (max-width:520px){
+  .grid6{grid-template-columns:1fr}
+  .phone{zoom:.92}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+/* design do site da ASTRAL: geometria quadrada */
+*,*::before,*::after{border-radius:0!important}
+.phone{border-radius:48px!important}
+.screen{border-radius:38px!important}
+</style>
+</head>
+<body>
+
+<!-- ============ TEMPLATES DAS TELAS ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="5 5 38 38"><path d="M24 7l5 11 11 6-11 6-5 11-5-11-11-6 11-6z" fill="#FF7F11" stroke="#141414" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="i-operario" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 30a15 15 0 0 1 30 0z" fill="#FFC72C"/><path d="M5 30h38v6H5z" fill="#FF7F11"/><path d="M24 15v15" /></symbol>
+    <symbol id="i-mestre" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="8" width="28" height="34" rx="5" fill="#FFC72C"/><rect x="17" y="4" width="14" height="8" rx="3" fill="#FF7F11"/><path d="M17 22h14M17 29h14M17 36h8"/></symbol>
+    <symbol id="i-eng" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="15" stroke-width="6" stroke-dasharray="6.3 5.3" stroke-linecap="butt"/><circle cx="24" cy="24" r="11" fill="#FFC72C"/><circle cx="24" cy="24" r="4.5" fill="#FFF"/></symbol>
+    <symbol id="i-arq" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8v32h32z" fill="#FFC72C"/><path d="M15 24v10h10z" fill="#FFF"/><path d="M8 18h5M8 28h5M18 40v-5M28 40v-5" /></symbol>
+    <symbol id="i-ger" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 4l6 14 14 6-14 6-6 14-6-14-14-6 14-6z" fill="#FF7F11"/><circle cx="24" cy="24" r="4" fill="#FFF"/></symbol>
+    <symbol id="i-cli" viewBox="0 0 48 48" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 23L24 7l18 16" /><path d="M11 21v20h26V21" fill="#FFC72C"/><rect x="20" y="28" width="8" height="13" rx="2" fill="#FF7F11"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-6.5 8-6.5s7 2 8 6.5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12z"/><path d="M9 21v-6h6v6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5v9l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a4.5 4.5 0 0 1 .8-8.9A6 6 0 0 1 19 8.5a3.5 3.5 0 0 1-.5 6.5H7z"/><path d="M8 18.5l-1 2.5M12 18.5l-1 2.5M16 18.5l-1 2.5"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-build" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-4 8 4v13z"/><path d="M9 21v-5h6v5M9 11h2M13 11h2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10M10 20v-6h4v6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></symbol>
+  </defs>
+</svg>
+
+<template id="tpl-login">
+  <div class="app">
+    <div class="status"><span>9:41</span><i aria-hidden="true"></i></div>
+    <div class="hero">
+      <div class="brand"><svg width="40" height="40" aria-hidden="true"><use href="#i-logo"/></svg><b>ASTRAL</b></div>
+      <h3 tabindex="-1">Bem-vindo à obra!</h3>
+      <p>Entre para acompanhar tudo em um só lugar.</p>
+    </div>
+    <div class="form">
+      <label class="field" data-f="email">
+        <span class="lbl">E-mail</span>
+        <span class="inp"><svg width="24" height="24" aria-hidden="true"><use href="#i-user"/></svg><input name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" placeholder="Ex.: maria@empresa.com.br"></span>
+        <span class="err">Digite um e-mail válido, como nome@empresa.com.br.</span>
+      </label>
+      <label class="field" data-f="senha">
+        <span class="lbl">Senha</span>
+        <span class="inp"><svg width="24" height="24" aria-hidden="true"><use href="#i-lock"/></svg><input name="senha" type="password" autocomplete="current-password" placeholder="Sua senha"></span>
+        <span class="help">Mínimo de 4 caracteres.</span>
+        <span class="err">Digite sua senha (mínimo de 4 caracteres).</span>
+      </label>
+      <button type="button" class="btn" data-act="enter">Entrar</button>
+      <button type="button" class="linkbtn" data-act="forgot">Esqueci minha senha</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-profile">
+  <div class="app">
+    <div class="status"><span>9:41</span><i aria-hidden="true"></i></div>
+    <div class="topbar">
+      <button type="button" class="back" data-act="back" aria-label="Voltar para o login"><svg width="24" height="24" aria-hidden="true"><use href="#i-back"/></svg></button>
+      <div class="steps"><small>Passo 2 de 2</small><div class="bar"><i></i></div></div>
+    </div>
+    <div class="ask">
+      <h3 tabindex="-1">Quem é você na obra?</h3>
+      <p>Na versão real, o perfil vem da sua conta. Aqui, escolha um para testar.</p>
+    </div>
+    <div class="roles" role="group" aria-label="Tipo de usuário">
+      <button type="button" class="pcard" data-role="Operário" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-operario"/></svg>Operário</button>
+      <button type="button" class="pcard" data-role="Mestre de obra" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-mestre"/></svg>Mestre de obra</button>
+      <button type="button" class="pcard" data-role="Engenheiro" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-eng"/></svg>Engenheiro</button>
+      <button type="button" class="pcard" data-role="Arquiteto" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-arq"/></svg>Arquiteto</button>
+      <button type="button" class="pcard" data-role="Gerente Astral" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-ger"/></svg>Gerente Astral</button>
+      <button type="button" class="pcard" data-role="Cliente" aria-pressed="false"><span class="tick"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><svg class="ico" aria-hidden="true"><use href="#i-cli"/></svg>Cliente</button>
+    </div>
+    <div class="pad"><button type="button" class="btn" data-act="go" disabled>Continuar</button></div>
+  </div>
+</template>
+
+<template id="tpl-done">
+  <div class="app">
+    <div class="status"><span>9:41</span><i aria-hidden="true"></i></div>
+    <div class="done">
+      <div class="big"><svg width="52" height="52" aria-hidden="true"><use href="#i-check"/></svg></div>
+      <h3 tabindex="-1">Tudo pronto, <span data-o="nome"></span>!</h3>
+      <p>Você entrou como <b data-o="role"></b>. Sua Home já está pronta.</p>
+      <div class="note" data-o="note" role="status"></div>
+      <button type="button" class="btn" data-act="see">Abrir minha Home</button>
+      <button type="button" class="linkbtn" data-act="restart">Recomeçar</button>
+    </div>
+  </div>
+</template>
+
+<!-- ============ SLIDES ============ -->
+<main class="deck" id="deck">
+
+  <!-- 1 capa -->
+  <section class="slide cover active" aria-label="Capa">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <div class="logo-row"><svg width="56" height="56" aria-hidden="true"><use href="#i-logo"/></svg></div>
+          <h1>ASTRAL</h1>
+          <p class="tagline">O cérebro operacional da execução física.</p>
+          <p class="lead">Modelo do app de controle de obras: um só lugar para quem constrói, projeta, gerencia e acompanha.</p>
+          <div class="chips"><span>Operário</span><span>Mestre de obra</span><span>Engenheiro</span><span>Arquiteto</span><span>Gerente Astral</span><span>Cliente</span></div>
+        </div>
+        <div class="phone-col"><div class="phone"><div class="screen" data-static="login"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 login -->
+  <section class="slide" aria-label="Tela de login">
+    <div class="wrap">
+      <div class="split flip">
+        <div class="phone-col"><div class="phone"><div class="screen" data-static="login"></div></div></div>
+        <div>
+          <span class="kicker">Tela 1: Entrada</span>
+          <h2>E-mail e senha, e a pessoa já entra.</h2>
+          <p class="lead">O login é o e-mail da pessoa, mais a senha. As obras dela aparecem na Home, logo depois de entrar.</p>
+          <ul class="notes">
+            <li><b>Poucos campos</b><span>Menos escolhas, menos abandono. <span class="tag">Lei de Hick</span></span></li>
+            <li><b>Rótulo sempre visível</b><span>O texto fica acima do campo, não só dentro. Quem digita não perde a referência.</span></li>
+            <li><b>Senha protegida</b><span>O campo esconde os caracteres e o navegador pode preencher sozinho.</span></li>
+            <li><b>Ajuda na hora da dúvida</b><span>Abaixo da senha, a regra de tamanho e o atalho “Esqueci minha senha”.</span></li>
+            <li><b>Botão grande na zona do polegar</b><span>56 px de altura e largura total. <span class="tag">Lei de Fitts</span></span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 perfil -->
+  <section class="slide" aria-label="Tela de seleção de perfil">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <span class="kicker">Tela 2: Perfil</span>
+          <h2>Quem é você na obra?</h2>
+          <p class="lead">Seis perfis, cada um com ícone e nome. Todos veem tudo, mas cada perfil só edita a parte em que trabalha.</p>
+          <ul class="notes">
+            <li><b>Reconhecer é mais fácil que lembrar</b><span>Ícone grande e nome escrito juntos: entende quem lê e quem só olha.</span></li>
+            <li><b>Seis opções, nem mais</b><span>Cabem de uma vez na tela, sem rolar. <span class="tag">Lei de Miller</span></span></li>
+            <li><b>Alvos de toque generosos</b><span>Cada cartão passa de 100 px de altura, bom para mãos com luva ou sujas de obra.</span></li>
+            <li><b>Seleção que não depende só da cor</b><span>Borda laranja, fundo creme e um selo de confirmado.</span></li>
+            <li><b>Sempre dá para voltar</b><span>Botão de voltar e barra de progresso mostram onde a pessoa está.</span></li>
+          </ul>
+        </div>
+        <div class="phone-col"><div class="phone"><div class="screen" data-static="profile-demo"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 protótipo -->
+  <section class="slide" aria-label="Protótipo clicável">
+    <div class="wrap">
+      <div class="split flip">
+        <div class="phone-col">
+          <div class="phone"><div class="screen" id="proto"></div></div>
+        </div>
+        <div>
+          <span class="kicker">Protótipo clicável</span>
+          <h2>Teste o fluxo de entrada.</h2>
+          <p class="lead">Preencha e-mail e senha (pode inventar) e escolha um perfil. Teste como Mestre de obra para editar, como Cliente para só visualizar e como Gerente Astral para abrir a Análise.</p>
+          <ul class="notes">
+            <li><b>Erros que explicam o que fazer</b><span>A mensagem aparece junto ao campo, em vermelho com fundo rosado, nunca só por cor.</span></li>
+            <li><b>Botão só liga quando faz sentido</b><span>“Continuar” fica desativado até um perfil ser escolhido.</span></li>
+            <li><b>Confirmação no final</b><span>A última tela confirma o perfil e leva à Home.</span></li>
+            <li><b>Depois, as abas</b><span>Toque em “Abrir minha Home” para ver Home, Materiais, Calendário e, para o gestor, a Análise.</span></li>
+          </ul>
+          <p style="margin-top:22px"><button class="reset" type="button" id="resetProto">Recomeçar protótipo</button></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 aba materiais -->
+  <section class="slide" aria-label="Aba de falta de materiais">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <span class="kicker">Aba 1: Materiais</span>
+          <h2>Faltou algo? Anote em segundos.</h2>
+          <p class="lead">Funciona como uma lista de lembretes: digite o material, ou toque em uma sugestão, e ele entra na lista na hora.</p>
+          <ul class="notes">
+            <li><b>Adicionar com um toque</b><span>Sugestões rápidas para o que mais falta. Menos digitação com luva ou mão suja.</span></li>
+            <li><b>Urgente vai para o topo</b><span>A bandeirinha sobe o item e acrescenta o rótulo escrito “Urgente”, sem depender só da cor.</span></li>
+            <li><b>“Chegou” também é um toque</b><span>O item fica riscado e dá para desfazer. <span class="tag">Prevenção de erros</span></span></li>
+            <li><b>Sem itens repetidos</b><span>Se o material já está na lista, o app avisa em vez de duplicar.</span></li>
+          </ul>
+          <p class="lead" style="margin-top:18px">Teste ao lado: digite um material, toque nas sugestões, marque urgente ou chegou.</p>
+        </div>
+        <div class="phone-col"><div class="phone"><div class="screen" data-app="mat"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 aba calendario -->
+  <section class="slide" aria-label="Aba de calendário da obra">
+    <div class="wrap">
+      <div class="split flip">
+        <div class="phone-col"><div class="phone"><div class="screen" data-app="cal"></div></div></div>
+        <div>
+          <span class="kicker">Aba 2: Calendário</span>
+          <h2>Cada dia da obra registrado.</h2>
+          <p class="lead">Toque em um dia para dizer se a equipe trabalhou, se choveu ou se a obra parou, e por quê.</p>
+          <ul class="notes">
+            <li><b>Três situações, cada uma com cor e ícone</b><span>Trabalhamos (amarelo e visto), Choveu (preto e nuvem), Obra parada (laranja e pausa). Dá para distinguir mesmo sem ver as cores.</span></li>
+            <li><b>Motivo em poucos toques</b><span>Para obra parada: falta de material, falta de equipe, feriado, equipamento quebrado ou outro. Observação é opcional.</span></li>
+            <li><b>Resumo do mês</b><span>Contagem de dias e lista do porquê de cada dia sem trabalho. Ajuda a explicar atrasos no prazo.</span></li>
+            <li><b>Lembrete do dia</b><span>Se hoje ainda não foi registrado, um aviso no topo leva direto ao registro.</span></li>
+          </ul>
+          <p class="lead" style="margin-top:18px">Teste ao lado: toque em qualquer dia do mês.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6b home -->
+  <section class="slide" aria-label="Home">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <span class="kicker">Aba 3: Home</span>
+          <h2>Quem sou eu e onde trabalho.</h2>
+          <p class="lead">A Home mostra nome, cargo, e-mail e as obras em que a pessoa participa. Tocar numa obra muda os dados de Materiais e Calendário.</p>
+          <ul class="notes">
+            <li><b>Você edita</b><span>Etiquetas mostram o que o perfil pode editar. O resto fica em somente leitura, com aviso.</span></li>
+            <li><b>Todos veem tudo</b><span>Materiais e Calendário são visíveis para todos os perfis das suas obras.</span></li>
+          </ul>
+        </div>
+        <div class="phone-col"><div class="phone"><div class="screen" data-app="home"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6c analise -->
+  <section class="slide" aria-label="Análise e decisões do gestor">
+    <div class="wrap">
+      <div class="split flip">
+        <div class="phone-col"><div class="phone"><div class="screen" data-app="ana" data-role="Gerente Astral"></div></div></div>
+        <div>
+          <span class="kicker">Aba 4: Análise (só gestor)</span>
+          <h2>O Astor recalcula o prazo da obra.</h2>
+          <p class="lead">Cada dia de chuva ou parado por falta de material, equipe ou equipamento empurra a entrega. O Astor, a IA da Astral, lê o calendário e mostra o novo prazo e as opções.</p>
+          <ul class="notes">
+            <li><b>Feriado não atrasa</b><span>Só contam chuva (parte do dia vale meio dia) e paradas por outros motivos.</span></li>
+            <li><b>Perguntas prontas</b><span>Recalcular o prazo, ver o que mais atrasa e decidir como recuperar.</span></li>
+          </ul>
+          <p class="lead" style="margin-top:18px">Teste ao lado: toque em uma pergunta.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 depois do login -->
+  <section class="slide" aria-label="O que cada perfil vê">
+    <div class="wrap">
+      <div>
+        <span class="kicker">Próxima etapa</span>
+        <h2>Cada perfil abre o seu painel.</h2>
+        <p class="lead">Todos veem as mesmas informações das suas obras. Cada perfil só edita a sua parte, e a Análise é exclusiva do gestor.</p>
+      </div>
+      <div class="grid6">
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-operario"/></svg><h3>Operário</h3><p>Edita: Materiais. Vê o calendário e o restante.</p></div>
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-mestre"/></svg><h3>Mestre de obra</h3><p>Edita: Materiais e Calendário.</p></div>
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-eng"/></svg><h3>Engenheiro</h3><p>Edita: Calendário (registro dos dias). Vê o restante.</p></div>
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-arq"/></svg><h3>Arquiteto</h3><p>Só visualiza por enquanto. Plantas e projetos entram numa próxima etapa.</p></div>
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-ger"/></svg><h3>Gerente Astral</h3><p>Edita a Análise: recalcula o prazo e decide com o Astor. Única aba exclusiva.</p></div>
+        <div class="role-card"><svg class="ico" aria-hidden="true"><use href="#i-cli"/></svg><h3>Cliente</h3><p>Só visualiza: materiais, calendário e andamento da obra.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 visual -->
+  <section class="slide" aria-label="Paleta e tipografia">
+    <div class="wrap">
+      <div>
+        <span class="kicker">Identidade visual</span>
+        <h2>Cores de canteiro de obras, jeito de brincar.</h2>
+        <p class="lead">Amarelo e laranja de capacete e sinalização, preto de asfalto e branco de parede pintada. Formas redondas e botões “de adesivo” deixam o app amigável.</p>
+      </div>
+      <div class="swatches" role="list">
+        <div class="sw" role="listitem" style="background:#FFC72C;color:#141414"><b>Amarelo capacete</b><span>#FFC72C</span><small>Fundos de destaque e ícones</small></div>
+        <div class="sw" role="listitem" style="background:#FF7F11;color:#141414"><b>Laranja sinalização</b><span>#FF7F11</span><small>Botões e ações principais</small></div>
+        <div class="sw" role="listitem" style="background:#141414;color:#FFFFFF"><b>Preto asfalto</b><span>#141414</span><small>Textos e contornos</small></div>
+        <div class="sw" role="listitem" style="background:#FFFFFF;color:#141414"><b>Branco cal</b><span>#FFFFFF</span><small>Telas e campos</small></div>
+        <div class="sw" role="listitem" style="background:#FFF3CF;color:#141414"><b>Creme reboco</b><span>#FFF3CF</span><small>Seleção e avisos leves</small></div>
+      </div>
+      <div class="specs">
+        <div class="type-demo">
+          <div class="d">Fredoka para títulos</div>
+          <p class="n">Nunito para textos, rótulos e ajuda: letras redondas e muito legíveis em tela pequena e sob o sol.</p>
+          <small>Texto sempre preto sobre amarelo e laranja: contraste acima de 8:1, bem além dos 4,5:1 exigidos pela WCAG.</small>
+        </div>
+        <div class="btn-demo">
+          <button type="button" class="btn" style="background:#FF7F11">Ação principal</button>
+          <button type="button" class="btn alt">Ação secundária</button>
+          <button type="button" class="btn" disabled>Desativado</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 ux -->
+  <section class="slide" aria-label="Boas práticas de UX">
+    <div class="wrap">
+      <div>
+        <span class="kicker">Boas práticas de UX</span>
+        <h2>Fácil de usar, mesmo com pressa e sol na tela.</h2>
+      </div>
+      <div class="laws">
+        <div class="law"><h3>Lei de Fitts</h3><p>Botões grandes e próximos do polegar, com pelo menos 48 px de toque e espaço entre eles.</p></div>
+        <div class="law"><h3>Lei de Hick</h3><p>Poucas escolhas por tela. Cada passo pede uma decisão só.</p></div>
+        <div class="law"><h3>Lei de Miller</h3><p>Seis perfis cabem na memória de curto prazo e na tela inteira.</p></div>
+        <div class="law"><h3>Lei de Jakob</h3><p>Login, voltar e progresso funcionam como nos apps que a pessoa já usa.</p></div>
+        <div class="law"><h3>Proximidade e agrupamento</h3><p>Rótulo, campo e mensagem de erro ficam juntos. Perfis ficam agrupados em grade.</p></div>
+        <div class="law"><h3>Efeito estética-usabilidade</h3><p>Visual simpático faz o app parecer mais simples e aumenta a confiança de quem o usa.</p></div>
+        <div class="law"><h3>Feedback e prevenção de erros</h3><p>Botão desativado, máscara de telefone e mensagens claras evitam que a pessoa se perca.</p></div>
+        <div class="law"><h3>Acessibilidade (WCAG)</h3><p>Contraste alto, foco visível, rótulos para leitores de tela e informação que não depende só de cor.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="nav" aria-label="Navegação da apresentação">
+  <button class="step" id="prev" type="button" aria-label="Slide anterior"><svg width="26" height="26" aria-hidden="true"><use href="#i-prev"/></svg></button>
+  <div class="dots" id="dots"></div>
+  <span class="count" id="count" aria-live="polite"></span>
+  <button class="step" id="next" type="button" aria-label="Próximo slide"><svg width="26" height="26" aria-hidden="true"><use href="#i-next"/></svg></button>
+</nav>
+
+<script>
+(function(){
+  /* ---------- navegação ---------- */
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var dots=document.getElementById('dots'), count=document.getElementById('count');
+  var prev=document.getElementById('prev'), next=document.getElementById('next');
+  var cur=0;
+  slides.forEach(function(s,i){
+    var b=document.createElement('button');
+    b.type='button'; b.setAttribute('aria-label','Ir para o slide '+(i+1)); b.innerHTML='<i></i>';
+    b.addEventListener('click',function(){go(i)});
+    dots.appendChild(b);
+  });
+  function go(i){
+    cur=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach(function(s,k){s.classList.toggle('active',k===cur); if(k===cur) s.scrollTop=0;});
+    [].forEach.call(dots.children,function(b,k){ if(k===cur) b.setAttribute('aria-current','true'); else b.removeAttribute('aria-current'); });
+    count.textContent=(cur+1)+' / '+slides.length;
+    prev.disabled=cur===0; next.disabled=cur===slides.length-1;
+  }
+  prev.addEventListener('click',function(){go(cur-1)});
+  next.addEventListener('click',function(){go(cur+1)});
+  document.addEventListener('keydown',function(e){
+    var t=e.target.tagName;
+    if(t==='INPUT'||t==='TEXTAREA') return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'){go(cur+1)}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){go(cur-1)}
+  });
+  var tx=null;
+  document.addEventListener('touchstart',function(e){tx=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(tx===null) return;
+    var dx=e.changedTouches[0].clientX-tx; tx=null;
+    if(Math.abs(dx)>80 && !e.target.closest('.phone')){ go(cur+(dx<0?1:-1)); }
+  },{passive:true});
+
+  /* ---------- telas ---------- */
+  function tpl(name){return document.getElementById('tpl-'+name).content.cloneNode(true)}
+
+  document.querySelectorAll('[data-static]').forEach(function(el){
+    var kind=el.getAttribute('data-static');
+    if(kind==='login'){ el.appendChild(tpl('login')); }
+    else {
+      el.appendChild(tpl('profile'));
+      var c=el.querySelector('[data-role="Mestre de obra"]');
+      c.setAttribute('aria-pressed','true');
+      el.querySelector('[data-act="go"]').disabled=false;
+    }
+    el.setAttribute('inert','');
+    el.setAttribute('role','img');
+    el.setAttribute('aria-label', kind==='login' ? 'Tela de login do app Astral' : 'Tela de seleção de perfil do app Astral');
+  });
+
+  /* ---------- protótipo ---------- */
+  var proto=document.getElementById('proto');
+  var data={email:'',senha:'',role:''};
+
+  function show(name){
+    proto.innerHTML=''; proto.appendChild(tpl(name));
+    var h=proto.querySelector('h3'); if(h) h.focus({preventScroll:true});
+    if(name==='login'){
+      proto.querySelector('[name=email]').value=data.email;
+      proto.querySelector('[name=senha]').value=data.senha;
+    }
+    if(name==='profile' && data.role){
+      var c=proto.querySelector('[data-role="'+data.role+'"]');
+      if(c){c.setAttribute('aria-pressed','true'); proto.querySelector('[data-act="go"]').disabled=false;}
+    }
+    if(name==='done'){
+      proto.querySelector('[data-o=nome]').textContent=firstName();
+      proto.querySelector('[data-o=role]').textContent=data.role;
+    }
+  }
+  function firstName(){return (PERSONAS[data.role]||PERSONAS['Mestre de obra']).nome.split(' ')[0]}
+  function maskTel(v){
+    var d=v.replace(/\D/g,'').slice(0,11), o='';
+    if(d.length>0) o='('+d.slice(0,2);
+    if(d.length>=3) o+=') '+d.slice(2, d.length>10?7:6);
+    if(d.length>(d.length>10?7:6)) o+='-'+d.slice(d.length>10?7:6);
+    return o;
+  }
+  function setBad(name,bad){
+    var f=proto.querySelector('[data-f="'+name+'"]'); if(!f) return;
+    f.classList.toggle('bad',bad);
+    var i=f.querySelector('input'); if(bad) i.setAttribute('aria-invalid','true'); else i.removeAttribute('aria-invalid');
+  }
+  proto.addEventListener('input',function(e){
+    var t=e.target; if(t.tagName!=='INPUT') return;
+    data[t.name]=t.value;
+    if(t.value.trim()) setBad(t.name,false);
+  });
+  proto.addEventListener('click',function(e){
+    var card=e.target.closest('.pcard');
+    if(card){
+      proto.querySelectorAll('.pcard').forEach(function(c){c.setAttribute('aria-pressed','false')});
+      card.setAttribute('aria-pressed','true');
+      data.role=card.getAttribute('data-role');
+      proto.querySelector('[data-act="go"]').disabled=false;
+      return;
+    }
+    var b=e.target.closest('[data-act]'); if(!b) return;
+    var act=b.getAttribute('data-act');
+    if(act==='enter'){
+      var okL=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email.trim());
+      var okS=data.senha.length>=4;
+      setBad('email',!okL); setBad('senha',!okS);
+      if(okL&&okS) show('profile');
+      else { var first=proto.querySelector('.field.bad input'); if(first) first.focus(); }
+    }
+    if(act==='forgot'){
+      var f=proto.querySelector('[data-f="senha"] .help');
+      f.textContent='Peça uma nova senha ao gerente Astral da sua obra.';
+    }
+    if(act==='back') show('login');
+    if(act==='go' && data.role) show('done');
+    if(act==='see'){ enterApp(); }
+    if(act==='restart'){ data={email:'',senha:'',role:''}; show('login'); }
+  });
+  document.getElementById('resetProto').addEventListener('click',function(){
+    data={email:'',senha:'',role:''}; show('login');
+  });
+  show('login');
+  proto.querySelector('h3') && document.activeElement && document.activeElement.blur();
+
+  /* ---------- app com abas: Materiais e Calendário ---------- */
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function ic(n,s){s=s||24;return '<svg width="'+s+'" height="'+s+'" aria-hidden="true"><use href="#i-'+n+'"/></svg>'}
+  function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+  var DOW=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  function dayLabel(d){return cap(DOW[new Date(2026,8,d).getDay()])+', '+d+' de setembro'}
+  var TODAY=30, KIND={w:'Trabalhado',r:'Choveu',p:'Obra parada'}, KICON={w:'ok',r:'rain',p:'pause'};
+  var QUICK=['Cimento','Areia','Tijolo','Tinta','Cano PVC','Fio elétrico'];
+  var PAUSE_WHY=['Falta de material','Falta de equipe','Feriado','Equipamento quebrado','Outro motivo'];
+  var RAIN_WHY=['Dia todo','Parte do dia'];
+
+  function seedDays(){
+    var d={};
+    [1,2,3,4,5,8,9,14,15,16,18,21,22,24,25,28,29].forEach(function(x){d[x]={t:'w',why:'',note:''}});
+    d[7]={t:'p',why:'Feriado',note:'Independência do Brasil'};
+    d[10]={t:'r',why:'Dia todo',note:''};
+    d[11]={t:'r',why:'Parte do dia',note:''};
+    d[17]={t:'p',why:'Falta de material',note:'Cimento acabou'};
+    d[23]={t:'r',why:'Dia todo',note:''};
+    return d;
+  }
+
+  var OBRAS=[
+    {nome:'Residencial Jardim das Flores',end:'Rua das Acácias, 120 · São Paulo',prazo:new Date(2026,11,15)},
+    {nome:'Edifício Vila Nova',end:'Av. Paulista, 900 · São Paulo',prazo:new Date(2027,2,20)},
+    {nome:'Casa Alto da Serra',end:'Rua do Mirante, 45 · Campinas',prazo:new Date(2026,10,28)}];
+  var PERSONAS={
+    'Operário':{nome:'Carlos Lima',cargo:'Operário · Pedreiro',obras:[0]},
+    'Mestre de obra':{nome:'Maria Souza',cargo:'Mestre de obra',obras:[0,1]},
+    'Engenheiro':{nome:'Rafael Nogueira',cargo:'Engenheiro civil',obras:[0,1,2]},
+    'Arquiteto':{nome:'Beatriz Campos',cargo:'Arquiteta',obras:[1,2]},
+    'Gerente Astral':{nome:'Helena Duarte',cargo:'Gestora Astral',obras:[0,1,2]},
+    'Cliente':{nome:'Paulo Almeida',cargo:'Cliente',obras:[2]}};
+  var GEST='Gerente Astral';
+  var EDIT={mat:['Operário','Mestre de obra'],cal:['Mestre de obra','Engenheiro']};
+  var QL={prazo:'Recalcular o prazo de entrega',causa:'O que mais atrasa a obra?',decisao:'Que decisão tomar?'};
+  function nf(x){return String(x).replace('.',',')}
+  function dfmt(d,s){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+(s?String(d.getFullYear()).slice(-2):d.getFullYear())}
+  function addWork(b,n){var d=new Date(b.getTime());while(n>0){d.setDate(d.getDate()+1);if(d.getDay()!==0)n--;}return d}
+  var ROBOX='<div class="robox" role="note"><b>Somente leitura.</b> Você vê tudo, mas só quem trabalha nesta parte edita.</div>';
+  function seedStore(){
+    var a={},b={};
+    [1,2,3,4,8,9,10,11,14,15,16,17,18,21,22,23,24,25,28,29].forEach(function(x){a[x]={t:'w',why:'',note:''}});
+    a[5]={t:'r',why:'Dia todo',note:''}; a[7]={t:'p',why:'Feriado',note:'Independência do Brasil'}; a[12]={t:'p',why:'Falta de equipe',note:''};
+    [1,2,3,4,8,9,10,11,14,15,16].forEach(function(x){b[x]={t:'w',why:'',note:''}});
+    b[7]={t:'p',why:'Feriado',note:'Independência do Brasil'}; b[17]={t:'r',why:'Parte do dia',note:''};
+    return [
+      {days:seedDays(),mats:[
+        {id:1,name:'Cimento CP-II',by:'Carlos',when:'hoje',urgent:true,done:false},
+        {id:2,name:'Tijolo 8 furos',by:'Ana',when:'ontem',urgent:false,done:false},
+        {id:3,name:'Tinta branca 18 L',by:'Carlos',when:'ontem',urgent:false,done:true}]},
+      {days:a,mats:[{id:4,name:'Vergalhão 10 mm',by:'Paulo',when:'hoje',urgent:true,done:false}]},
+      {days:b,mats:[{id:5,name:'Telha cerâmica',by:'Rita',when:'ontem',urgent:false,done:false}]}
+    ];
+  }
+
+  function createApp(root,o){
+    o=o||{};
+    var P=PERSONAS[o.role]||PERSONAS['Mestre de obra'];
+    var store=seedStore();
+    var st={tab:o.tab||'mat', user:o.user||P.nome.split(' ')[0], role:o.role||'Mestre de obra', draft:'', nid:10, sheet:null, obra:null, mats:[], days:{}, chat:[], askDraft:''};
+    Object.defineProperty(st,'ro',{get:function(){return (EDIT[st.tab]||[]).indexOf(st.role)<0}});
+    function pick(i){
+      if(st.obra!==null){store[st.obra].mats=st.mats; store[st.obra].days=st.days;}
+      st.obra=i; st.mats=store[i].mats; st.days=store[i].days; st.chat=[];
+    }
+    pick(P.obras[0]);
+    root.innerHTML='';
+    var w=document.createElement('div'); w.className='app shell'; root.appendChild(w);
+    var tt;
+    function toast(m){
+      var el=w.querySelector('.toast'); if(!el) return;
+      el.textContent=m; el.classList.add('on');
+      clearTimeout(tt); tt=setTimeout(function(){var e2=w.querySelector('.toast'); if(e2) e2.classList.remove('on')},2200);
+    }
+
+    /* --- Materiais --- */
+    function matHtml(){
+      var pend=st.mats.filter(function(m){return !m.done}).length, dn=st.mats.length-pend;
+      var list=st.mats.slice().sort(function(a,b){return (+a.done - +b.done)||((b.urgent?1:0)-(a.urgent?1:0))||(b.id-a.id)});
+      var h=(st.ro?ROBOX:'')+'<h3>Falta de material</h3><p class="sub">'+(st.ro?'Veja o que está faltando nesta obra.':'Anote o que está faltando. Toque no quadrado quando o material chegar.')+'</p>';
+      if(!st.ro){h+='<div class="quick"><span class="inp"><input name="mat" type="text" autocomplete="off" aria-label="O que está faltando?" placeholder="O que está faltando?" value="'+esc(st.draft)+'"></span>';
+      h+='<button type="button" class="addbtn" data-act="a-add" aria-label="Adicionar material">'+ic('plus',26)+'</button></div>';
+      h+='<div class="qchips" role="group" aria-label="Sugestões rápidas">'+QUICK.map(function(q){return '<button type="button" class="qc" data-act="a-q" data-n="'+esc(q)+'">'+ic('plus',14)+esc(q)+'</button>'}).join('')+'</div>';}
+      h+='<div class="mcount"><span>'+pend+' faltando</span>'+(dn?'<small>'+dn+' já chegou</small>':'')+'</div>';
+      if(!list.length){
+        h+='<div class="empty">'+(st.ro?'Nada faltando por enquanto.':'Nada faltando por enquanto. Toque em um material acima quando precisar avisar.')+'</div>';
+      } else {
+        h+='<ul class="mlist">'+list.map(function(m){
+          return '<li class="mi'+(m.urgent&&!m.done?' urgent':'')+(m.done?' done':'')+'">'+
+            (st.ro?'':'<button type="button" class="chk" data-act="a-chk" data-i="'+m.id+'" aria-pressed="'+m.done+'" aria-label="'+esc(m.name)+': marcar como chegou">'+ic('ok',22)+'</button>')+
+            '<div class="mt"><b>'+esc(m.name)+'</b><small>'+esc(m.by)+' · '+m.when+(m.done?' · chegou':'')+'</small>'+(m.urgent&&!m.done?'<span class="badge">Urgente</span>':'')+'</div>'+
+            (m.done||st.ro?'':'<button type="button" class="ib" data-act="a-flag" data-i="'+m.id+'" aria-pressed="'+m.urgent+'" aria-label="'+esc(m.name)+': marcar como urgente">'+ic('flag',20)+'</button>')+
+            (st.ro?'':'<button type="button" class="ib" data-act="a-del" data-i="'+m.id+'" aria-label="Remover '+esc(m.name)+'">'+ic('trash',20)+'</button>')+
+          '</li>';
+        }).join('')+'</ul>';
+      }
+      return h;
+    }
+    function addMat(n,fromInput){
+      n=cap((n||'').trim());
+      if(n.length<2){toast('Digite o nome do material.'); var i0=w.querySelector('[name=mat]'); if(i0) i0.focus(); return;}
+      var dup=st.mats.some(function(m){return !m.done && m.name.toLowerCase()===n.toLowerCase()});
+      if(dup){toast(n+' já está na lista.'); return;}
+      st.mats.push({id:st.nid++,name:n,by:st.user,when:'agora',urgent:false,done:false});
+      st.draft=''; render(true);
+      toast(n+' adicionado.');
+      if(fromInput){var i1=w.querySelector('[name=mat]'); if(i1) i1.focus();}
+    }
+
+    /* --- Calendário --- */
+    function calHtml(){
+      var first=new Date(2026,8,1).getDay(), cnt={w:0,r:0,p:0}, h=st.ro?ROBOX:'';
+      Object.keys(st.days).forEach(function(k){cnt[st.days[k].t]++});
+      if(!st.ro && !st.days[TODAY]) h+='<button type="button" class="nudge" data-act="a-day" data-d="'+TODAY+'">Hoje (dia '+TODAY+') ainda não foi registrado. <u>Registrar agora</u></button>';
+      h+='<div class="mh"><h3>Setembro 2026</h3></div>';
+      h+='<div class="wk" aria-hidden="true">'+['D','S','T','Q','Q','S','S'].map(function(x){return '<span>'+x+'</span>'}).join('')+'</div><div class="cg">';
+      for(var i=0;i<first;i++) h+='<span></span>';
+      for(var d=1;d<=30;d++){
+        var r=st.days[d], c=r?r.t:'e';
+        var lab=dayLabel(d)+': '+(r?KIND[r.t]:'sem registro')+(d===TODAY?' (hoje)':''), inner='<span>'+d+'</span>'+(r?ic(KICON[r.t],16):'<span></span>');
+        h+=st.ro?'<div class="day ro '+c+(d===TODAY?' today':'')+'" role="img" aria-label="'+lab+'">'+inner+'</div>'
+          :'<button type="button" class="day '+c+(d===TODAY?' today':'')+'" data-act="a-day" data-d="'+d+'" aria-label="'+lab+'">'+inner+'</button>';
+      }
+      h+='</div>';
+      h+='<div class="legend"><span class="lg"><i class="w">'+ic('ok',14)+'</i>Trabalhados '+cnt.w+'</span><span class="lg"><i class="r">'+ic('rain',14)+'</i>Chuva '+cnt.r+'</span><span class="lg"><i class="p">'+ic('pause',14)+'</i>Parados '+cnt.p+'</span></div>';
+      var off=Object.keys(st.days).map(Number).filter(function(k){return st.days[k].t!=='w'}).sort(function(a,b){return b-a});
+      h+='<div class="whyh">Por que a obra não trabalhou</div>';
+      if(!off.length) h+='<div class="empty">Nenhum dia parado neste mês.</div>';
+      else h+='<ul class="why">'+off.map(function(k){
+        var r=st.days[k], txt=r.t==='r'?'Chuva · '+r.why.toLowerCase():r.why;
+        if(r.note) txt+=' — '+r.note;
+        return '<li><b>'+(k<10?'0':'')+k+'/09</b><span>'+esc(txt)+'</span></li>';
+      }).join('')+'</ul>';
+      return h;
+    }
+    function sheetHtml(){
+      var s=st.sheet, ex=!!st.days[s.d];
+      function opt(t,icn,label){return '<button type="button" class="opt '+t+'" data-act="a-type" data-t="'+t+'" aria-pressed="'+(s.t===t)+'">'+ic(icn,28)+label+'</button>'}
+      function reasons(title,arr){return '<div class="rs"><span class="lbl">'+title+'</span><div class="rchips" role="group" aria-label="'+title+'">'+arr.map(function(x){return '<button type="button" class="rc" data-act="a-why" data-w="'+esc(x)+'" aria-pressed="'+(s.why===x)+'">'+x+'</button>'}).join('')+'</div></div>'}
+      var h='<div class="scrim" data-act="a-close"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Registrar dia">';
+      h+='<div class="sheet-h"><h4>'+dayLabel(s.d)+'</h4><button type="button" class="xbtn" data-act="a-close" aria-label="Fechar">'+ic('x',20)+'</button></div>';
+      h+='<div class="opts">'+opt('w','ok','Trabalhamos')+opt('r','rain','Choveu')+opt('p','pause','Obra parada')+'</div>';
+      if(s.t==='r') h+=reasons('Quanto tempo choveu?',RAIN_WHY);
+      if(s.t==='p') h+=reasons('Por que a obra parou?',PAUSE_WHY);
+      if(s.t) h+='<div class="rs"><label class="field"><span class="lbl">Observação (opcional)</span><span class="inp"><input name="note" type="text" autocomplete="off" placeholder="Ex.: Cimento acabou" value="'+esc(s.note)+'"></span></label></div>';
+      var ok=s.t && (s.t!=='p' || s.why);
+      h+='<button type="button" class="btn" data-act="a-save" style="margin-top:14px"'+(ok?'':' disabled')+'>Salvar dia</button>';
+      if(s.t==='p'&&!s.why) h+='<p class="help" style="text-align:center;margin-top:8px">Escolha o motivo para salvar.</p>';
+      if(ex) h+='<button type="button" class="linkbtn" data-act="a-clear">Limpar registro deste dia</button>';
+      return h+'</div>';
+    }
+    function openSheet(d){
+      var r=st.days[d];
+      st.sheet={d:d,t:r?r.t:null,why:r?r.why:'',note:r?r.note:''};
+      render(true);
+      var f=w.querySelector('.sheet .opt'); if(f) f.focus();
+    }
+
+    /* --- Construções --- */
+    function homeHtml(){
+      var can=[]; if(EDIT.mat.indexOf(st.role)>=0) can.push('Materiais'); if(EDIT.cal.indexOf(st.role)>=0) can.push('Calendário'); if(st.role===GEST) can.push('Análise e decisões');
+      var mail=o.email||P.nome.toLowerCase().replace(' ','.')+'@email.com';
+      var h='<div class="mecard"><span class="av">'+esc(P.nome.charAt(0))+'</span><div class="mt"><b>'+esc(P.nome)+'</b><small>'+esc(P.cargo)+'</small><small>'+esc(mail)+'</small></div></div>';
+      h+='<div class="whyh">Você edita</div><div class="perm">'+(can.length?can.map(function(x){return '<span class="pm">'+x+'</span>'}).join(''):'<span class="pm">Somente visualização</span>')+'</div>';
+      h+='<p class="sub" style="margin-top:6px">Você vê todas as informações das suas obras, mas só edita a parte em que trabalha.</p>';
+      h+='<div class="whyh">Minhas obras</div><ul class="mlist">'+P.obras.map(function(i){
+        var ob=OBRAS[i], on=st.obra===i;
+        return '<li><button type="button" class="ocard" data-act="a-obra" data-i="'+i+'" aria-pressed="'+on+'"><span class="oic">'+ic('build',26)+'</span><span class="mt"><b>'+esc(ob.nome)+'</b><small>'+esc(ob.end)+'</small>'+(on?'<span class="badge">Selecionada</span>':'')+'</span></button></li>';
+      }).join('')+'</ul>';
+      return h;
+    }
+    function analise(){
+      var ob=OBRAS[st.obra], c={'Chuva':0,'Falta de material':0,'Falta de equipe':0,'Equipamento quebrado':0,'Outro motivo':0}, lost=0;
+      Object.keys(st.days).forEach(function(k){var r=st.days[k];
+        if(r.t==='r'){var v=r.why==='Parte do dia'?0.5:1; c['Chuva']+=v; lost+=v;}
+        else if(r.t==='p' && r.why!=='Feriado'){c[r.why]+=1; lost+=1;}
+      });
+      var n=Math.ceil(lost), nd=addWork(ob.prazo,n);
+      return {c:c,lost:lost,n:n,ob:ob,nd:nd,orig:dfmt(ob.prazo),novo:dfmt(nd)};
+    }
+    function reply(k){
+      var a=analise(), cs=Object.keys(a.c).filter(function(x){return a.c[x]>0}).sort(function(x,y){return a.c[y]-a.c[x]});
+      if(k==='?') return 'Posso ajudar com o prazo de entrega, as causas de atraso e decisões para recuperar o prazo. Toque em uma pergunta acima.';
+      if(!cs.length) return 'Nenhum dia perdido por chuva ou paradas. O prazo de '+a.orig+' está mantido.';
+      var parts=cs.map(function(x){return x.toLowerCase()+' '+nf(a.c[x])}).join(', ');
+      if(k==='prazo') return 'Prazo original: '+a.orig+'. Em setembro foram '+nf(a.lost)+' dia(s) de trabalho perdidos ('+parts+'). Feriados não contam. Novo prazo estimado: <b>'+a.novo+'</b> (+'+a.n+' dia(s) úteis, de segunda a sábado).';
+      if(k==='causa'){
+        var top=cs[0], urg=st.mats.filter(function(m){return m.urgent&&!m.done}).length;
+        var tip=top==='Chuva'?'Adiante serviços internos nos dias de chuva e deixe os externos para a previsão seca.':top==='Falta de material'?'Há '+urg+' material(is) urgente(s) na lista. Antecipar a compra evita novas paradas.':'Converse com o mestre de obra e registre a solução no calendário.';
+        return 'A maior causa é <b>'+top.toLowerCase()+'</b>, com '+nf(a.c[top])+' dia(s). '+tip;
+      }
+      return 'Para manter '+a.orig+' seria preciso recuperar '+a.n+' dia(s). Opção A: 2 h extras por dia durante '+(a.n*4)+' dias úteis. Opção B: aceitar '+a.novo+' e avisar o cliente. Decida junto com o engenheiro e o mestre de obra.';
+    }
+    function guess(q){q=q.toLowerCase(); return /prazo|entreg|atras|data/.test(q)?'prazo':/decis|fazer|recuper|solu/.test(q)?'decisao':/causa|chuva|material|motivo|parad/.test(q)?'causa':'?'}
+    function ask(key,text){
+      st.chat.push({q:text||QL[key],a:reply(key||guess(text))}); st.askDraft=''; render(true);
+      var pn=w.querySelector('.pane'); if(pn) pn.scrollTop=pn.scrollHeight;
+      var i=w.querySelector('[name=ask]'); if(i && text) i.focus({preventScroll:true});
+    }
+    function anaHtml(){
+      var a=analise(), tot=Math.max(a.lost,1);
+      var h='<h3>Análise da obra</h3><p class="sub">Só o gestor vê esta aba. Dados do calendário e dos materiais de '+esc(a.ob.nome)+'.</p>';
+      h+='<div class="kpis"><div class="kpi"><small>Prazo original</small><b>'+dfmt(a.ob.prazo,1)+'</b></div><div class="kpi hot"><small>Novo prazo</small><b>'+dfmt(a.nd,1)+'</b></div><div class="kpi"><small>Dias perdidos</small><b>'+nf(a.lost)+'</b></div></div>';
+      var cs=Object.keys(a.c).filter(function(x){return a.c[x]>0});
+      h+='<div class="whyh">Por que a obra perdeu dias</div>'+(cs.length?'<ul class="bars">'+cs.map(function(x){return '<li><i style="width:'+Math.round(a.c[x]/tot*100)+'%"></i><span>'+x+'</span><b>'+nf(a.c[x])+'</b></li>'}).join('')+'</ul>':'<div class="empty">Nenhum dia perdido até agora.</div>');
+      h+='<div class="aih"><span class="oic">'+ic('chart',24)+'</span><b>Astor</b></div><p class="sub" style="margin-top:4px">Responde com base no calendário e nos materiais desta obra.</p>';
+      h+='<div class="qchips">'+Object.keys(QL).map(function(k){return '<button type="button" class="qc" data-act="a-ask" data-q="'+k+'">'+QL[k]+'</button>'}).join('')+'</div>';
+      h+='<div class="chat">'+(st.chat.length?st.chat.map(function(m){return '<div class="msg me">'+esc(m.q)+'</div><div class="msg ia">'+m.a+'</div>'}).join(''):'<div class="msg ia">Olá! Sou o Astor. Posso recalcular o prazo de entrega com base nos dias sem trabalho.</div>')+'</div>';
+      h+='<div class="quick"><span class="inp"><input name="ask" type="text" autocomplete="off" aria-label="Pergunte ao Astor" placeholder="Pergunte ao Astor" value="'+esc(st.askDraft)+'"></span><button type="button" class="addbtn" data-act="a-askgo" aria-label="Enviar pergunta">'+ic('next',24)+'</button></div>';
+      return h;
+    }
+    function paneHtml(){
+      if(st.tab==='ana' && st.role===GEST) return anaHtml();
+      if(st.tab==='mat') return matHtml();
+      if(st.tab==='cal') return calHtml();
+      return homeHtml();
+    }
+
+    /* --- estrutura --- */
+    function tabBtn(t,icn,label){return '<button type="button" role="tab" class="tab" data-act="a-tab" data-t="'+t+'" aria-selected="'+(st.tab===t)+'">'+ic(icn,24)+label+'</button>'}
+    var KEYS=['data-act','data-i','data-t','data-n','data-d','data-w','data-q'];
+    function render(keep){
+      var oldPane=w.querySelector('.pane'), sc=(keep&&oldPane)?oldPane.scrollTop:0;
+      var oldSheet=w.querySelector('.sheet'), ssc=oldSheet?oldSheet.scrollTop:0;
+      var fsel=null, ae=document.activeElement;
+      if(ae && w.contains(ae) && ae.getAttribute && ae.getAttribute('data-act')){
+        fsel=KEYS.map(function(k){return ae.hasAttribute(k)?'['+k+'="'+ae.getAttribute(k)+'"]':''}).join('');
+      }
+      var h='<div class="ahead"><div class="status"><span>9:41</span><i aria-hidden="true"></i></div><div class="arow"><svg width="36" height="36" aria-hidden="true"><use href="#i-logo"/></svg><div><b>'+(st.obra===null?'Escolha sua obra':esc(OBRAS[st.obra].nome))+'</b><small>'+esc(st.role)+' · '+esc(st.user)+'</small></div>'+(o.onExit?'<button type="button" class="xbtn" data-act="a-exit">Sair</button>':'')+'</div></div>';
+      h+='<div class="pane">'+paneHtml()+'</div>';
+      h+='<div class="tabbar'+(st.role===GEST?' g4':'')+'" role="tablist" aria-label="Abas da obra">'+tabBtn('home','home','Home')+tabBtn('mat','box','Materiais')+tabBtn('cal','cal','Calendário')+(st.role===GEST?tabBtn('ana','chart','Análise'):'')+'</div>';
+      h+='<div class="toast" role="status"></div>';
+      if(st.sheet) h+=sheetHtml();
+      w.innerHTML=h;
+      var np=w.querySelector('.pane'); if(np) np.scrollTop=sc;
+      var ns=w.querySelector('.sheet'); if(ns) ns.scrollTop=ssc;
+      if(fsel){var el=w.querySelector(fsel); if(el) el.focus({preventScroll:true});}
+    }
+
+    w.addEventListener('click',function(e){
+      var b=e.target.closest('[data-act]'); if(!b||!w.contains(b)) return;
+      var a=b.getAttribute('data-act'), id=+b.getAttribute('data-i');
+      if(st.ro && /^a-(add|q|chk|flag|del|day|type|why|save|clear)$/.test(a)) return;
+      if(a==='a-tab'){st.tab=b.getAttribute('data-t'); st.sheet=null; render(false);}
+      else if(a==='a-obra'){pick(id); render(true); toast(OBRAS[st.obra].nome+' selecionada.');}
+      else if(a==='a-ask'){ask(b.getAttribute('data-q'),'');}
+      else if(a==='a-askgo'){if(!st.askDraft.trim()){toast('Digite sua pergunta.');return;} ask('',st.askDraft.trim());}
+      else if(a==='a-add'){addMat(st.draft,true);}
+      else if(a==='a-q'){addMat(b.getAttribute('data-n'),false);}
+      else if(a==='a-chk'){st.mats.forEach(function(m){if(m.id===id){m.done=!m.done; if(m.done) m.urgent=false;}}); render(true);}
+      else if(a==='a-flag'){st.mats.forEach(function(m){if(m.id===id) m.urgent=!m.urgent}); render(true);}
+      else if(a==='a-del'){st.mats=st.mats.filter(function(m){return m.id!==id}); render(true); toast('Material removido.');}
+      else if(a==='a-day'){openSheet(+b.getAttribute('data-d'));}
+      else if(a==='a-close'){st.sheet=null; render(true);}
+      else if(a==='a-type'){
+        var t=b.getAttribute('data-t'); st.sheet.t=t;
+        if(t==='w') st.sheet.why='';
+        if(t==='r' && RAIN_WHY.indexOf(st.sheet.why)<0) st.sheet.why='Dia todo';
+        if(t==='p' && PAUSE_WHY.indexOf(st.sheet.why)<0) st.sheet.why='';
+        render(true);
+      }
+      else if(a==='a-why'){st.sheet.why=b.getAttribute('data-w'); render(true);}
+      else if(a==='a-save'){
+        var s=st.sheet; if(!s.t||(s.t==='p'&&!s.why)) return;
+        st.days[s.d]={t:s.t,why:s.t==='w'?'':s.why,note:(s.note||'').trim()};
+        st.sheet=null; render(true); toast('Dia '+s.d+' salvo.');
+      }
+      else if(a==='a-clear'){var d0=st.sheet.d; delete st.days[d0]; st.sheet=null; render(true); toast('Registro do dia '+d0+' limpo.');}
+      else if(a==='a-exit'){ if(o.onExit) o.onExit(); }
+    });
+    w.addEventListener('input',function(e){
+      var t=e.target;
+      if(t.name==='mat') st.draft=t.value;
+      if(t.name==='ask') st.askDraft=t.value;
+      if(t.name==='note' && st.sheet) st.sheet.note=t.value;
+    });
+    w.addEventListener('keydown',function(e){
+      if(e.key==='Enter' && e.target.name==='ask'){e.preventDefault(); if(st.askDraft.trim()) ask('',st.askDraft.trim());}
+      if(e.key==='Enter' && e.target.name==='mat'){e.preventDefault(); addMat(st.draft,true);}
+      if(e.key==='Escape' && st.sheet){st.sheet=null; render(true);}
+    });
+    render(false);
+  }
+
+  function enterApp(){
+    createApp(proto,{tab:'home',email:data.email,role:data.role||'Mestre de obra',
+      onExit:function(){data={email:'',senha:'',role:''}; show('login');}});
+  }
+  document.querySelectorAll('[data-app]').forEach(function(el){
+    createApp(el,{tab:el.getAttribute('data-app'),role:el.getAttribute('data-role')||undefined});
+  });
+
+  go(0);
+})();
+</script>
+</body>
+</html>
